@@ -7,19 +7,19 @@ pipeline {
 
   stages {
 
-    stage('Clone') {
+    stage('Checkout') {
       steps {
-        git 'https://github.com/spring-projects/spring-petclinic.git'
+        checkout scm
       }
     }
 
     stage('Build') {
       steps {
-        sh 'mvn clean install -DskipTests'
+        sh 'mvn clean package -DskipTests'
       }
     }
 
-    stage('Sonar Scan') {
+    stage('SonarQube Analysis') {
       steps {
         withSonarQubeEnv('sonar') {
           sh 'mvn sonar:sonar'
