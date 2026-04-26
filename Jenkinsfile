@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage('Clone') {
             steps {
-                checkout scm
+                checkout https://github.com/praveenudemycourses/spring-petclinic.git
             }
         }
 
@@ -16,7 +16,7 @@ pipeline {
 
         stage('Run Container') {
             steps {
-                sh 'docker run -d -p 8081:8080 petclinic-app'
+                sh 'docker run -d -p 8082:8080 petclinic-app'
             }
         }
     }
