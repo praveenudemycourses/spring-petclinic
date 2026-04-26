@@ -12,14 +12,14 @@ pipeline {
         sh 'mvn clean verify'
       }
     }
-
     stage('SonarQube Analysis') {
-      steps {
-        withSonarQubeEnv('sonar') {
-          sh 'mvn sonar:sonar'
+    steps {
+        withSonarQubeEnv('sonarqube') {
+            sh 'mvn sonar:sonar'
         }
-      }
     }
+}
+
 
     stage('Quality Gate') {
       steps {
