@@ -2,13 +2,14 @@ pipeline {
     agent any
 
     stages {
+
         stage('Clone') {
             steps {
-                checkout https://github.com/praveenudemycourses/spring-petclinic.git
+                checkout scm
             }
         }
 
-        stage('Build Image') {
+        stage('Build Docker Image') {
             steps {
                 sh 'docker build -t petclinic-app .'
             }
