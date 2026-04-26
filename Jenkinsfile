@@ -1,39 +1,85 @@
 pipeline {
-  agent any
+agent any
 
-  tools {
+```
+tools {
     maven 'maven'
-  }
+}
 
-  stages {
+environment {
+    AWS_REGION = 'us-east-1'
+    REGISTRY = '971615377317.dkr.ecr.us-east-1.amazonaws.com'
+    IMAGE_NAME = 'petclinic-app'
+    IMAGE_TAG = "${BUILD_NUMBER}"
+    DOCKER_IMAGE = "${IMAGE_NAME}:${IMAGE_TAG}"
+}
+
+stages {
+
+    stage('Checkout') {
+        steps {
+            git 'https://github.com/praveenudemycourses/spring-petclinic'
+        }
+    }
 
     stage('Build & Test') {
-      steps {
-        sh 'mvn clean verify'
-      }
+        steps {
+            sh 'mvn clean verify'
+        }
     }
-    stage('SonarQube Analysis') {
-    steps {
-        withSonarQubeEnv('sonarqube') {
-            sh 'mvn sonar:sonar'
+
+    stage('Build Docker Image') {
+        steps {
+            sh '''
+            docker build -t $DOCKER_IMAGE .
+            '''
+        }
+    }
+
+    stage('Tag Image') {
+        steps {
+            sh '''
+            docker tag $DOCKER_IMAGE $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+            '''
+        }
+    }
+
+    stage('Login to ECR') {
+        steps {
+            sh '''
+            aws ecr get-login-password --region $AWS_REGION | \
+            docker login --username AWS --password-stdin $REGISTRY
+            '''
+        }
+    }
+
+    stage('Push to ECR') {
+        steps {
+            sh '''
+            docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+            '''
+        }
+    }
+
+    stage('Verify Image in ECR') {
+        steps {
+            sh '''
+            aws ecr describe-images \
+            --repository-name $IMAGE_NAME \
+            --region $AWS_REGION
+            '''
+        }
+    }
+
+    stage('Cleanup Local Images') {
+        steps {
+            sh '''
+            docker rmi $DOCKER_IMAGE || true
+            docker rmi $REGISTRY/$IMAGE_NAME:$IMAGE_TAG || true
+            '''
         }
     }
 }
+```
 
-
-    stage('Quality Gate') {
-      steps {
-        timeout(time: 4, unit: 'MINUTES') {
-          waitForQualityGate abortPipeline: true
-        }
-      }
-    }
-
-  }
-
-  post {
-    success {
-      archiveArtifacts artifacts: 'target/*.jar'
-    }
-  }
 }
