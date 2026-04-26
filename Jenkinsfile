@@ -1,85 +1,63 @@
 pipeline {
-agent any
+    agent any
 
-```
-tools {
-    maven 'maven'
-}
-
-environment {
-    AWS_REGION = 'us-east-1'
-    REGISTRY = '971615377317.dkr.ecr.us-east-1.amazonaws.com'
-    IMAGE_NAME = 'petclinic-app'
-    IMAGE_TAG = "${BUILD_NUMBER}"
-    DOCKER_IMAGE = "${IMAGE_NAME}:${IMAGE_TAG}"
-}
-
-stages {
-
-    stage('Checkout') {
-        steps {
-            git 'https://github.com/praveenudemycourses/spring-petclinic'
-        }
+    tools {
+        maven 'maven'
     }
 
-    stage('Build & Test') {
-        steps {
-            sh 'mvn clean verify'
-        }
+    environment {
+        AWS_REGION = 'us-east-1'
+        REGISTRY = '971615377317.dkr.ecr.us-east-1.amazonaws.com'
+        IMAGE_NAME = 'petclinic-app'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        DOCKER_IMAGE = "${IMAGE_NAME}:${IMAGE_TAG}"
     }
 
-    stage('Build Docker Image') {
-        steps {
-            sh '''
-            docker build -t $DOCKER_IMAGE .
-            '''
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/praveenudemycourses/spring-petclinic'
+            }
+        }
+
+        stage('Build & Test') {
+            steps {
+                sh 'mvn clean verify'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                docker build -t $DOCKER_IMAGE .
+                '''
+            }
+        }
+
+        stage('Tag Image') {
+            steps {
+                sh '''
+                docker tag $DOCKER_IMAGE $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+                '''
+            }
+        }
+
+        stage('Login to ECR') {
+            steps {
+                sh '''
+                aws ecr get-login-password --region $AWS_REGION | \
+                docker login --username AWS --password-stdin $REGISTRY
+                '''
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                sh '''
+                docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+                '''
+            }
         }
     }
-
-    stage('Tag Image') {
-        steps {
-            sh '''
-            docker tag $DOCKER_IMAGE $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
-            '''
-        }
-    }
-
-    stage('Login to ECR') {
-        steps {
-            sh '''
-            aws ecr get-login-password --region $AWS_REGION | \
-            docker login --username AWS --password-stdin $REGISTRY
-            '''
-        }
-    }
-
-    stage('Push to ECR') {
-        steps {
-            sh '''
-            docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
-            '''
-        }
-    }
-
-    stage('Verify Image in ECR') {
-        steps {
-            sh '''
-            aws ecr describe-images \
-            --repository-name $IMAGE_NAME \
-            --region $AWS_REGION
-            '''
-        }
-    }
-
-    stage('Cleanup Local Images') {
-        steps {
-            sh '''
-            docker rmi $DOCKER_IMAGE || true
-            docker rmi $REGISTRY/$IMAGE_NAME:$IMAGE_TAG || true
-            '''
-        }
-    }
-}
-```
-
 }
